@@ -150,6 +150,43 @@
         }
         .total-price { font-size: 2.5rem; font-weight: 900; }
 
+        /* --- ESTILOS PARA LISTA DE VENTAS (NUEVO) --- */
+        .sales-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 10px;
+            margin-top: 1rem;
+            padding-right: 5px;
+        }
+
+        .sale-card {
+            background: #fff;
+            color: #000;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--accent);
+        }
+
+        .sale-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .sale-item {
+            font-size: 0.85rem;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
     </style>
 </head>
 <body>
@@ -264,6 +301,15 @@
 
                     <div style="display: flex; gap: 10px; flex-direction: column;">
                         <button onclick="downloadPDF()" class="btn btn-pdf">📄 Descargar Reporte PDF</button>
+                    </div>
+                </div>
+
+                <!-- NUEVA TARJETA: LISTA DE VENTAS -->
+                <div class="card">
+                    <h2>Detalle de Productos Vendidos</h2>
+                    <div id="sales-list" class="sales-list-container">
+                        <!-- Aqui se insertaran las ventas dinamicamente -->
+                        <div style="text-align:center; padding:20px; color:#888;">Selecciona un periodo para ver el detalle</div>
                     </div>
                 </div>
             </section>
@@ -528,7 +574,7 @@
             }
         }
 
-        // --- REPORTES CON FILTROS Y DETALLE ---
+        // --- REPORTES CON FILTROS Y LISTA DETALLADA ---
         function getFilteredSales() {
             const type = document.getElementById('report-type').value;
             const now = new Date();
@@ -559,9 +605,42 @@
             if(type === 'month') label = new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' });
             if(type === 'year') label = new Date().getFullYear();
 
+            // Actualizar resumen general
             document.getElementById('report-date').innerText = label.toUpperCase();
             document.getElementById('report-count').innerText = filtered.length;
             document.getElementById('report-total').innerText = '$' + filtered.reduce((sum, s)=>sum+s.total, 0).toFixed(2);
+
+            // Actualizar lista de ventas (NUEVO)
+            const listContainer = document.getElementById('sales-list');
+            listContainer.innerHTML = '';
+
+            if(filtered.length === 0) {
+                listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No hay ventas en este periodo.</div>';
+                return;
+            }
+
+            filtered.forEach(sale => {
+                const dateObj = new Date(sale.date);
+                const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                let itemsHtml = '';
+                if(sale.items && sale.items.length > 0) {
+                    sale.items.forEach(item => {
+                        itemsHtml += `<div class="sale-item"><span>${item.name} x${item.qty}</span><span>$${item.subtotal.toFixed(2)}</span></div>`;
+                    });
+                }
+
+                const saleHtml = `
+                    <div class="sale-card">
+                        <div class="sale-header">
+                            <span>${timeStr}</span>
+                            <span>$${sale.total.toFixed(2)}</span>
+                        </div>
+                        <div>${itemsHtml}</div>
+                    </div>
+                `;
+                listContainer.innerHTML += saleHtml;
+            });
         }
 
         function downloadPDF() {
