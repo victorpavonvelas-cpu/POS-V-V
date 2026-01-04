@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abarrotes V&V Unificado</title>
-    <!-- Libreria para leer Codigos de Barras con Camara -->
+    <title>Abarrotes V&V</title>
+    <!-- Libreria para leer Codigos de Barras -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Libreria para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         :root {
@@ -30,31 +32,9 @@
             color: var(--accent);
             font-size: 16px;
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 80px; /* Espacio para el menu inferior */
             display: flex;
             flex-direction: column;
-        }
-
-        /* --- PANTALLA DE ACCESO (SESION) --- */
-        #login-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--primary);
-            z-index: 5000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .login-card {
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 350px;
-            text-align: center;
-            border: 2px solid var(--accent);
         }
 
         /* --- ENCABEZADO --- */
@@ -135,13 +115,13 @@
         .btn-success { background-color: var(--white); color: var(--primary); font-size: 1.3rem; }
         .btn-danger { background-color: var(--danger); color: white; }
         .btn-camera { background-color: #3b82f6; color: white; margin-bottom: 0.5rem; }
+        .btn-pdf { background-color: #dc2626; color: white; } /* Rojo para PDF */
 
         .table-responsive { overflow-x: auto; border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; background: #fff; color: #000; min-width: 500px; }
         th { background-color: #d1fae5; color: var(--primary); padding: 10px; text-align: left; }
         td { padding: 10px; border-bottom: 1px solid #eee; }
         
-        /* --- ELEMENTOS DE UI --- */
         #scanner-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 2000; display: none;
@@ -174,22 +154,12 @@
 </head>
 <body>
 
-    <!-- PANTALLA LOGIN (Solo para saber quien usa la caja) -->
-    <div id="login-screen">
-        <div class="login-card">
-            <h1 style="color: var(--primary); margin-bottom: 1rem;">Abarrotes V&V</h1>
-            <p style="margin-bottom: 1.5rem; color: #555;">¿Quien atiende ahora?</p>
-            <input type="text" id="username-input" placeholder="Ej. Juan, Maria..." style="margin-bottom: 1rem;">
-            <button onclick="login()" class="btn btn-primary">Entrar al Sistema</button>
-        </div>
-    </div>
-
     <!-- APP PRINCIPAL -->
-    <div id="app-content" style="display:none;">
+    <div id="app-content">
         
         <div class="app-header">
             <h1>Abarrotes V&V</h1>
-            <small id="user-display" style="color: var(--accent);">Cajero: --</small>
+            <small style="color: var(--accent);">Sistema Unificado</small>
         </div>
 
         <main>
@@ -282,7 +252,10 @@
                         <div style="font-size: 2.5rem; font-weight: 900;" id="report-total">$0.00</div>
                     </div>
 
-                    <button onclick="renderReports()" class="btn btn-primary">Actualizar</button>
+                    <div style="display: flex; gap: 10px; flex-direction: column;">
+                        <button onclick="downloadPDF()" class="btn btn-pdf">📄 Descargar Reporte PDF</button>
+                        <button onclick="renderReports()" class="btn btn-primary">Actualizar</button>
+                    </div>
                 </div>
             </section>
         </main>
@@ -301,10 +274,6 @@
                 <span class="nav-icon">📊</span>
                 <span>Corte</span>
             </div>
-            <div onclick="logout()" class="nav-item">
-                <span class="nav-icon">🚪</span>
-                <span>Salir</span>
-            </div>
         </nav>
 
     </div>
@@ -322,58 +291,27 @@
 
     <script>
         // --- ESTADO GLOBAL ---
-        // Usamos claves unicas globales para que todos los usuarios compartan el mismo inventario
         const GLOBAL_INV_KEY = 'vv_global_inventory';
         const GLOBAL_SALES_KEY = 'vv_global_sales';
         
-        let currentUser = null;
         let inventory = [];
         let salesHistory = [];
         let cart = [];
         let html5QrCode;
         let scanContext = '';
 
-        // --- SISTEMA DE LOGIN (SOLO SESION) ---
-        function checkLogin() {
-            const savedUser = localStorage.getItem('vv_current_user');
-            if (savedUser) {
-                currentUser = savedUser;
-                loadGlobalData();
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                document.getElementById('user-display').innerText = 'Cajero: ' + currentUser;
-            }
-        }
-
-        function login() {
-            const input = document.getElementById('username-input');
-            const name = input.value.trim();
-            if (!name) return alert('Escribe un nombre');
-            currentUser = name;
-            localStorage.setItem('vv_current_user', currentUser);
-            loadGlobalData(); // Cargar datos COMPARTIDOS
-            
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-content').style.display = 'block';
-            document.getElementById('user-display').innerText = 'Cajero: ' + currentUser;
-        }
-
-        function logout() {
-            if(confirm('¿Cerrar sesion?')) {
-                localStorage.removeItem('vv_current_user');
-                location.reload();
-            }
-        }
+        // --- INICIALIZACION ---
+        window.onload = function() {
+            loadGlobalData();
+        };
 
         function loadGlobalData() {
-            // Cargamos datos de las claves GLOBALES
             const invData = localStorage.getItem(GLOBAL_INV_KEY);
             const salesData = localStorage.getItem(GLOBAL_SALES_KEY);
             
             inventory = invData ? JSON.parse(invData) : [];
             salesHistory = salesData ? JSON.parse(salesData) : [];
 
-            // Si esta vacio, agregamos datos de prueba para la tienda
             if (inventory.length === 0) {
                 inventory = [
                     { id: 1, name: 'Coca Cola', barcode: '1', price: 20, stock: 10 },
@@ -386,7 +324,6 @@
         }
 
         function saveGlobalData() {
-            // Guardamos en las claves GLOBALES (compartidas)
             localStorage.setItem(GLOBAL_INV_KEY, JSON.stringify(inventory));
             localStorage.setItem(GLOBAL_SALES_KEY, JSON.stringify(salesHistory));
         }
@@ -484,7 +421,6 @@
 
         function addToCart(p) {
             const exist = cart.find(c => c.id === p.id);
-            // Validamos stock global
             if(exist) {
                 if(exist.qty < p.stock) exist.qty++; else showToast('Sin stock', 'error');
             } else {
@@ -521,18 +457,10 @@
             cart.forEach(c => {
                 total += c.price * c.qty;
                 const prod = inventory.find(p=>p.id===c.id);
-                if(prod) prod.stock -= c.qty; // Restamos del inventario GLOBAL
+                if(prod) prod.stock -= c.qty;
             });
-            
-            // Guardamos venta con el usuario actual para referencia interna
-            salesHistory.push({ 
-                id:Date.now(), 
-                date:new Date().toISOString(), 
-                total:total, 
-                user: currentUser 
-            });
-            
-            saveGlobalData(); // Guarda cambios de inventario y ventas globalmente
+            salesHistory.push({ id:Date.now(), date:new Date().toISOString(), total:total });
+            saveGlobalData();
             showToast('Venta realizada');
             clearCart();
         }
@@ -569,18 +497,75 @@
             }
         }
 
-        // --- REPORTES ---
+        // --- REPORTES Y PDF ---
         function renderReports() {
             const today = new Date().toISOString().split('T')[0];
-            // Filtramos las ventas globales de hoy (sin importar quien hizo la venta)
             const todaySales = salesHistory.filter(s => s.date.startsWith(today));
-            
             document.getElementById('report-date').innerText = new Date().toLocaleDateString('es-ES');
             document.getElementById('report-count').innerText = todaySales.length;
-            
-            // Sumamos todo lo vendido hoy por cualquier usuario
-            const total = todaySales.reduce((sum, s)=>sum+s.total, 0);
-            document.getElementById('report-total').innerText = '$' + total.toFixed(2);
+            document.getElementById('report-total').innerText = '$' + todaySales.reduce((sum, s)=>sum+s.total, 0).toFixed(2);
+        }
+
+        // Funcion para quitar acentos para evitar errores en PDF
+        function removeAccents(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const todayStr = new Date().toLocaleDateString('es-ES');
+            const todayIso = new Date().toISOString().split('T')[0];
+            const todaySales = salesHistory.filter(s => s.date.startsWith(todayIso));
+            const totalAmount = todaySales.reduce((sum, s)=>sum+s.total, 0);
+
+            let yPos = 20;
+            const leftMargin = 10;
+            const lineHeight = 10;
+
+            // Titulo (Sin acentos)
+            doc.setFontSize(20);
+            doc.text(removeAccents("Abarrotes V&V - Corte del Dia"), leftMargin, yPos);
+            yPos += 15;
+
+            // Fecha
+            doc.setFontSize(12);
+            doc.text("Fecha: " + todayStr, leftMargin, yPos);
+            yPos += 10;
+
+            // Resumen
+            doc.setFontSize(14);
+            doc.text(removeAccents("Ventas Totales: ") + todaySales.length, leftMargin, yPos);
+            yPos += lineHeight;
+            doc.text(removeAccents("Recaudado: $") + totalAmount.toFixed(2), leftMargin, yPos);
+            yPos += 15;
+
+            // Lista de ventas
+            doc.setFontSize(10);
+            doc.text("Detalle de Ventas:", leftMargin, yPos);
+            yPos += lineHeight;
+
+            doc.setFontSize(9);
+            if(todaySales.length === 0) {
+                doc.text("No hubo ventas hoy.", leftMargin, yPos);
+            } else {
+                todaySales.forEach((sale, index) => {
+                    const time = new Date(sale.date).toLocaleTimeString();
+                    const lineText = `${index + 1}. ${time} - $${sale.total.toFixed(2)}`;
+                    
+                    // Comprobar si necesitamos nueva pagina
+                    if(yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(removeAccents(lineText), leftMargin, yPos);
+                    yPos += 7;
+                });
+            }
+
+            doc.save("Corte_Dia_" + todayIso + ".pdf");
+            showToast("PDF Generado");
         }
 
         document.addEventListener('click', (e) => {
@@ -588,9 +573,6 @@
                 dropdown.style.display = 'none';
             }
         });
-
-        // Inicializar
-        checkLogin();
 
     </script>
 </body>
