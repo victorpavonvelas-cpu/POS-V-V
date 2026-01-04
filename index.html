@@ -3,335 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abarrotes V&V</title>
+    <title>Abarrotes V&V Unificado</title>
     <!-- Libreria para leer Codigos de Barras con Camara -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
         :root {
-            --bg-color: #064e3b;
-            --text-color: #86efac;
-            --card-bg: #065f46;
-            --input-bg: #ffffff;
-            --input-text: #000000;
-            --btn-primary: #4ade80;
-            --btn-primary-text: #064e3b;
-            --btn-danger: #ef4444;
-            --border-color: #34d399;
+            --primary: #064e3b;      /* Verde Oscuro Fondo */
+            --accent: #4ade80;       /* Verde Claro Letras */
+            --card-bg: #065f46;      /* Verde Medio Tarjetas */
+            --white: #ffffff;
+            --danger: #ef4444;
+            --input-bg: #f3f4f6;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Verdana', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding-bottom: 2rem;
-            font-size: 18px;
+            background-color: var(--primary);
+            color: var(--accent);
+            font-size: 16px;
             min-height: 100vh;
+            padding-bottom: 80px;
+            display: flex;
+            flex-direction: column;
         }
 
-        header {
+        /* --- PANTALLA DE ACCESO (SESION) --- */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--primary);
+            z-index: 5000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 350px;
             text-align: center;
-            padding: 1.5rem 1rem;
+            border: 2px solid var(--accent);
+        }
+
+        /* --- ENCABEZADO --- */
+        .app-header {
+            text-align: center;
+            padding: 1rem;
             background-color: var(--card-bg);
-            border-bottom: 4px solid var(--text-color);
+            border-bottom: 2px solid var(--accent);
         }
 
         h1 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 0.5rem;
+            color: var(--white);
         }
 
-        nav {
+        /* --- MENU INFERIOR --- */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--card-bg);
             display: flex;
-            justify-content: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+            justify-content: space-around;
+            padding: 0.8rem 0;
+            border-top: 2px solid var(--accent);
+            z-index: 1000;
         }
 
-        .nav-btn {
-            background: transparent;
-            border: 2px solid var(--text-color);
-            color: var(--text-color);
-            padding: 0.8rem 1.2rem;
-            font-size: 1rem;
-            border-radius: 15px;
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.8rem;
             cursor: pointer;
-            font-weight: bold;
         }
 
-        .nav-btn.active {
-            background: var(--text-color);
-            color: var(--bg-color);
-        }
+        .nav-icon { font-size: 1.5rem; margin-bottom: 4px; }
+        .nav-item.active { color: var(--white); transform: translateY(-2px); }
 
-        main {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-
+        /* --- CONTENIDO --- */
+        main { padding: 1rem; flex: 1; }
         .view-section { display: none; }
         .view-section.active { display: block; }
 
         .card {
             background-color: var(--card-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
         }
 
         h2 {
-            border-bottom: 2px dashed var(--text-color);
+            border-bottom: 2px dashed var(--accent);
             padding-bottom: 0.5rem;
             margin-bottom: 1rem;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            color: var(--white);
         }
 
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 1rem;
-            border: 3px solid var(--border-color);
-            border-radius: 12px;
-            font-size: 1.2rem;
-            background-color: var(--input-bg);
-            color: var(--input-text);
-            margin-bottom: 1rem;
+        label { display: block; margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 12px; border: 2px solid var(--accent); border-radius: 10px;
+            font-size: 1rem; background-color: var(--white); color: #000; margin-bottom: 0.8rem;
         }
 
         .btn {
-            display: block;
-            width: 100%;
-            padding: 1.2rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            margin-top: 0.5rem;
+            display: block; width: 100%; padding: 14px; border: none; border-radius: 12px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer; text-transform: uppercase;
+            margin-top: 0.5rem; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
         }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
 
-        .btn-primary {
-            background-color: var(--btn-primary);
-            color: var(--btn-primary-text);
-        }
+        .btn-primary { background-color: var(--accent); color: var(--primary); }
+        .btn-success { background-color: var(--white); color: var(--primary); font-size: 1.3rem; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-camera { background-color: #3b82f6; color: white; margin-bottom: 0.5rem; }
 
-        .btn-camera {
-            background-color: #3b82f6;
-            color: white;
-            font-size: 1.4rem;
-            margin-bottom: 1rem;
-        }
-
-        .btn-success {
-            background-color: var(--btn-primary);
-            color: var(--bg-color);
-            font-size: 1.8rem;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-
-        .btn-danger { background-color: var(--btn-danger); color: white; }
-
-        .table-container { overflow-x: auto; background: #fff; border-radius: 15px; padding: 0.5rem; }
-        table { width: 100%; border-collapse: collapse; color: #000; }
-        th { background-color: #a7f3d0; padding: 1rem; text-align: left; }
-        td { padding: 0.8rem; border-bottom: 1px solid #ccc; }
-
-        /* ESTILOS DEL ESCANER */
-        #scanner-modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 2000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #reader {
-            width: 100%;
-            max-width: 500px;
-            border-radius: 10px;
-            overflow: hidden;
-        }
+        .table-responsive { overflow-x: auto; border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; color: #000; min-width: 500px; }
+        th { background-color: #d1fae5; color: var(--primary); padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
         
-        #scanner-controls {
-            margin-top: 1rem;
-            width: 90%;
-            max-width: 500px;
-            display: flex;
-            gap: 1rem;
+        /* --- ELEMENTOS DE UI --- */
+        #scanner-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 2000; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
         }
-
-        .total-display {
-            background: #fff;
-            color: #000;
-            padding: 1.5rem;
-            border-radius: 20px;
-            text-align: center;
-            border: 5px solid var(--text-color);
-            margin-bottom: 1rem;
-        }
-        .total-amount { font-size: 3.5rem; font-weight: 900; color: var(--bg-color); line-height: 1; }
-
-        /* Notificaciones */
-        #toast-container {
-            position: fixed; top: 20px; right: 20px; z-index: 3000;
-            width: 90%; max-width: 300px;
-        }
+        #reader { width: 90%; max-width: 400px; border-radius: 10px; overflow: hidden; }
+        
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; width: 90%; max-width: 300px; }
         .toast {
-            background: #fff; color: #000; padding: 1rem;
-            border-radius: 10px; margin-bottom: 10px;
-            border-left: 8px solid var(--btn-primary);
-            font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            background: #fff; color: #000; padding: 12px; border-radius: 8px; margin-bottom: 10px;
+            border-left: 5px solid var(--accent); font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .toast.error { border-left-color: var(--btn-danger); }
+        .toast.error { border-left-color: var(--danger); }
 
-        .row { display: flex; gap: 1rem; flex-wrap: wrap; }
-        .col { flex: 1; min-width: 250px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .dropdown {
+            position: absolute; background: #fff; width: 100%; border-radius: 0 0 10px 10px; z-index: 100;
+            display: none; border: 1px solid var(--accent); border-top: none; max-height: 200px; overflow-y: auto;
+        }
+        .dropdown-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; color: var(--primary); }
+        .dropdown-item:hover { background: #f0fdf4; }
+
+        .total-box {
+            background: #fff; color: var(--primary); padding: 1.5rem; border-radius: 16px;
+            text-align: center; border: 4px solid var(--accent); margin-bottom: 1rem;
+        }
+        .total-price { font-size: 2.5rem; font-weight: 900; }
 
     </style>
 </head>
 <body>
 
-    <div id="toast-container"></div>
-
-    <!-- MODAL DE CAMARA -->
-    <div id="scanner-modal">
-        <div id="reader"></div>
-        <div id="scanner-controls">
-            <button onclick="stopScanner()" class="btn btn-danger">X Cerrar Camara</button>
+    <!-- PANTALLA LOGIN (Solo para saber quien usa la caja) -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1 style="color: var(--primary); margin-bottom: 1rem;">Abarrotes V&V</h1>
+            <p style="margin-bottom: 1.5rem; color: #555;">¿Quien atiende ahora?</p>
+            <input type="text" id="username-input" placeholder="Ej. Juan, Maria..." style="margin-bottom: 1rem;">
+            <button onclick="login()" class="btn btn-primary">Entrar al Sistema</button>
         </div>
-        <p style="color:white; margin-top:1rem;">Apunta al codigo de barras</p>
     </div>
 
-    <header>
-        <h1>Abarrotes V&V</h1>
-        <nav>
-            <button onclick="switchView('inventory')" id="nav-inventory" class="nav-btn">Productos</button>
-            <button onclick="switchView('pos')" id="nav-pos" class="nav-btn active">Vender</button>
-            <button onclick="switchView('reports')" id="nav-reports" class="nav-btn">Corte</button>
-        </nav>
-    </header>
+    <!-- APP PRINCIPAL -->
+    <div id="app-content" style="display:none;">
+        
+        <div class="app-header">
+            <h1>Abarrotes V&V</h1>
+            <small id="user-display" style="color: var(--accent);">Cajero: --</small>
+        </div>
 
-    <main>
-        <!-- VISTA INVENTARIO -->
-        <section id="view-inventory" class="view-section">
-            <div class="card">
-                <h2>Agregar Producto</h2>
-                <form id="inventory-form">
-                    <div class="row">
-                        <div class="col"><label>Nombre</label><input type="text" id="prod-name" placeholder="Ej. Jabon" required></div>
-                        <div class="col"><label>Codigo</label><input type="text" id="prod-barcode" placeholder="Escanear o escribir" required></div>
+        <main>
+            <!-- SECCION 1: CAJA (POS) -->
+            <section id="view-pos" class="view-section active">
+                <div class="card">
+                    <h2>Cobrar</h2>
+                    <button onclick="startScanner('pos')" class="btn btn-camera">Camara del Celular</button>
+                    
+                    <div style="position: relative;">
+                        <label>O buscar producto:</label>
+                        <input type="text" id="pos-input" placeholder="Escribe nombre o codigo..." autocomplete="off">
+                        <ul id="pos-dropdown" class="dropdown"></ul>
                     </div>
-                    <div class="row">
-                        <div class="col"><label>Precio</label><input type="number" id="prod-price" step="0.01" placeholder="0.00" required></div>
-                        <div class="col"><label>Stock</label><input type="number" id="prod-stock" placeholder="0" required></div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </form>
-            </div>
-            <div class="card">
-                <div class="table-container">
-                    <table id="inventory-table">
-                        <thead><tr><th>Producto</th><th>Codigo</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
                 </div>
-            </div>
-        </section>
 
-        <!-- VISTA CAJA -->
-        <section id="view-pos" class="view-section active">
-            <div class="row">
-                <div class="col" style="flex: 2;">
-                    <div class="card">
-                        <h2>Escanear</h2>
-                        <!-- Boton para abrir camara -->
-                        <button onclick="startScanner()" class="btn btn-camera">Camara del Celular</button>
+                <div class="card">
+                    <h2>Carrito</h2>
+                    <div class="table-responsive">
+                        <table id="cart-table">
+                            <thead><tr><th>Prod</th><th>Cant</th><th>Total</th><th>X</th></tr></thead>
+                            <tbody id="cart-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="empty-cart-msg" style="text-align:center; padding:1rem; color:#aaa;">Carrito Vacio</div>
+                </div>
+
+                <div class="total-box">
+                    <small>TOTAL A PAGAR</small>
+                    <div class="total-price" id="pos-total">$0.00</div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="processSale()" class="btn btn-success" style="flex: 2;">COBRAR</button>
+                    <button onclick="clearCart()" class="btn btn-danger" style="flex: 1;">X</button>
+                </div>
+            </section>
+
+            <!-- SECCION 2: INVENTARIO -->
+            <section id="view-inventory" class="view-section">
+                <div class="card">
+                    <h2>Agregar Producto</h2>
+                    <form id="inventory-form">
+                        <label>Nombre</label>
+                        <input type="text" id="prod-name" placeholder="Ej. Galletas" required>
                         
-                        <label>O escribir codigo/nombre:</label>
-                        <input type="text" id="pos-input" placeholder="Codigo o nombre..." autofocus autocomplete="off">
-                    </div>
-
-                    <div class="card">
-                        <h2>Carrito</h2>
-                        <div class="table-container">
-                            <table id="cart-table">
-                                <thead><tr><th>Producto</th><th>Cant.</th><th>Total</th><th></th></tr></thead>
-                                <tbody id="cart-body"></tbody>
-                            </table>
-                            <div id="empty-cart-msg" style="text-align:center; padding:2rem;">Vacio</div>
+                        <div style="display: flex; gap: 5px; align-items: flex-start;">
+                            <div style="flex:1">
+                                <label>Codigo</label>
+                                <input type="text" id="prod-barcode" placeholder="Escanear" required style="margin-bottom: 0;">
+                            </div>
+                            <button type="button" onclick="startScanner('inventory')" class="btn" style="padding: 0 15px; margin-top: 1.5rem; width: auto;">Camara</button>
                         </div>
-                    </div>
+                        
+                        <div class="grid-2">
+                            <div>
+                                <label>Precio</label>
+                                <input type="number" id="prod-price" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div>
+                                <label>Stock</label>
+                                <input type="number" id="prod-stock" placeholder="0" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </form>
                 </div>
 
-                <div class="col">
-                    <div class="total-display">
-                        <span style="font-size:1.5rem;">TOTAL</span>
-                        <div class="total-amount" id="pos-total">$0.00</div>
+                <div class="card">
+                    <h2>Inventario Global</h2>
+                    <input type="text" id="inv-search" placeholder="Buscar en inventario..." onkeyup="renderInventory()">
+                    
+                    <div class="table-responsive">
+                        <table id="inventory-table">
+                            <thead><tr><th>Prod</th><th>Cod</th><th>$</th><th>Stock</th><th></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
-                    <button onclick="processSale()" class="btn btn-success">COBRAR</button>
-                    <button onclick="clearCart()" class="btn btn-danger">Cancelar</button>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- VISTA REPORTES -->
-        <section id="view-reports" class="view-section">
-            <div class="card" style="text-align:center;">
-                <h2>Corte de Hoy</h2>
-                <p id="report-date" style="margin-bottom:1rem;"></p>
-                <div style="background:#fff; padding:2rem; border-radius:20px; color:#000;">
-                    <div>Ventas Totales: <span id="report-count" style="font-size:2rem;">0</span></div>
-                    <div style="margin-top:1rem; font-size:3rem; color:#064e3b;" id="report-total">$0.00</div>
+            <!-- SECCION 3: REPORTES -->
+            <section id="view-reports" class="view-section">
+                <div class="card" style="text-align:center;">
+                    <h2>Corte del Dia</h2>
+                    <p id="report-date" style="color: var(--accent); font-weight: bold;"></p>
+                    
+                    <div style="background: #fff; padding: 2rem; border-radius: 20px; margin: 1rem 0; color: var(--primary);">
+                        <div>Ventas Totales: <span id="report-count" style="font-size: 1.5rem;">0</span></div>
+                        <div style="font-size: 2.5rem; font-weight: 900;" id="report-total">$0.00</div>
+                    </div>
+
+                    <button onclick="renderReports()" class="btn btn-primary">Actualizar</button>
                 </div>
-                <button onclick="renderReports()" class="btn btn-primary">Actualizar</button>
+            </section>
+        </main>
+
+        <!-- MENU INFERIOR -->
+        <nav class="bottom-nav">
+            <div onclick="switchView('pos')" id="nav-pos" class="nav-item active">
+                <span class="nav-icon">💰</span>
+                <span>Vender</span>
             </div>
-        </section>
-    </main>
+            <div onclick="switchView('inventory')" id="nav-inventory" class="nav-item">
+                <span class="nav-icon">📦</span>
+                <span>Inventario</span>
+            </div>
+            <div onclick="switchView('reports')" id="nav-reports" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span>Corte</span>
+            </div>
+            <div onclick="logout()" class="nav-item">
+                <span class="nav-icon">🚪</span>
+                <span>Salir</span>
+            </div>
+        </nav>
+
+    </div>
+
+    <!-- MODAL CAMARA -->
+    <div id="scanner-modal">
+        <div id="reader"></div>
+        <div style="margin-top: 1rem; width: 80%; max-width: 400px;">
+            <button onclick="stopScanner()" class="btn btn-danger">Cerrar Camara</button>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIONES -->
+    <div id="toast-container"></div>
 
     <script>
-        // --- VARIABLES GLOBALES ---
-        let inventory = JSON.parse(localStorage.getItem('vv_inventory')) || [];
-        let salesHistory = JSON.parse(localStorage.getItem('vv_sales')) || [];
+        // --- ESTADO GLOBAL ---
+        // Usamos claves unicas globales para que todos los usuarios compartan el mismo inventario
+        const GLOBAL_INV_KEY = 'vv_global_inventory';
+        const GLOBAL_SALES_KEY = 'vv_global_sales';
+        
+        let currentUser = null;
+        let inventory = [];
+        let salesHistory = [];
         let cart = [];
         let html5QrCode;
+        let scanContext = '';
 
-        // Datos iniciales de prueba
-        if (inventory.length === 0) {
-            inventory = [
-                { id: 1, name: 'Coca Cola 600ml', barcode: '750100', price: 20.00, stock: 24 },
-                { id: 2, name: 'Galletas Marias', barcode: '750200', price: 12.50, stock: 50 }
-            ];
-            saveData();
+        // --- SISTEMA DE LOGIN (SOLO SESION) ---
+        function checkLogin() {
+            const savedUser = localStorage.getItem('vv_current_user');
+            if (savedUser) {
+                currentUser = savedUser;
+                loadGlobalData();
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                document.getElementById('user-display').innerText = 'Cajero: ' + currentUser;
+            }
         }
 
-        function saveData() {
-            localStorage.setItem('vv_inventory', JSON.stringify(inventory));
-            localStorage.setItem('vv_sales', JSON.stringify(salesHistory));
+        function login() {
+            const input = document.getElementById('username-input');
+            const name = input.value.trim();
+            if (!name) return alert('Escribe un nombre');
+            currentUser = name;
+            localStorage.setItem('vv_current_user', currentUser);
+            loadGlobalData(); // Cargar datos COMPARTIDOS
+            
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            document.getElementById('user-display').innerText = 'Cajero: ' + currentUser;
         }
 
+        function logout() {
+            if(confirm('¿Cerrar sesion?')) {
+                localStorage.removeItem('vv_current_user');
+                location.reload();
+            }
+        }
+
+        function loadGlobalData() {
+            // Cargamos datos de las claves GLOBALES
+            const invData = localStorage.getItem(GLOBAL_INV_KEY);
+            const salesData = localStorage.getItem(GLOBAL_SALES_KEY);
+            
+            inventory = invData ? JSON.parse(invData) : [];
+            salesHistory = salesData ? JSON.parse(salesData) : [];
+
+            // Si esta vacio, agregamos datos de prueba para la tienda
+            if (inventory.length === 0) {
+                inventory = [
+                    { id: 1, name: 'Coca Cola', barcode: '1', price: 20, stock: 10 },
+                    { id: 2, name: 'Galletas', barcode: '2', price: 12, stock: 20 }
+                ];
+                saveGlobalData();
+            }
+            renderInventory();
+            renderReports();
+        }
+
+        function saveGlobalData() {
+            // Guardamos en las claves GLOBALES (compartidas)
+            localStorage.setItem(GLOBAL_INV_KEY, JSON.stringify(inventory));
+            localStorage.setItem(GLOBAL_SALES_KEY, JSON.stringify(salesHistory));
+        }
+
+        // --- UTILIDADES ---
         function showToast(msg, type='success') {
             const c = document.getElementById('toast-container');
             const t = document.createElement('div');
@@ -340,19 +400,18 @@
             setTimeout(()=>t.remove(), 3000);
         }
 
-        // --- NAVEGACION ---
         function switchView(v) {
             document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
             document.getElementById('view-'+v).classList.add('active');
             document.getElementById('nav-'+v).classList.add('active');
             
             if(v === 'pos') document.getElementById('pos-input').focus();
-            if(v === 'reports') renderReports();
             if(v === 'inventory') renderInventory();
+            if(v === 'reports') renderReports();
         }
 
-        // --- LOGICA INVENTARIO ---
+        // --- INVENTARIO ---
         document.getElementById('inventory-form').onsubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
@@ -363,7 +422,7 @@
             if(inventory.some(p=>p.barcode===barcode)) return showToast('Codigo duplicado', 'error');
 
             inventory.push({ id:Date.now(), name, barcode, price, stock });
-            saveData();
+            saveGlobalData();
             renderInventory();
             e.target.reset();
             showToast('Guardado');
@@ -371,89 +430,76 @@
 
         function renderInventory() {
             const tb = document.querySelector('#inventory-table tbody');
+            const search = document.getElementById('inv-search').value.toLowerCase();
             tb.innerHTML = '';
-            inventory.forEach(p => {
+            
+            const filtered = inventory.filter(p => p.name.toLowerCase().includes(search) || p.barcode.includes(search));
+
+            filtered.forEach(p => {
                 tb.innerHTML += `
                     <tr>
-                        <td>${p.name}</td><td>${p.barcode}</td><td>$${p.price.toFixed(2)}</td>
-                        <td class="${p.stock<5?'red':'green'}" style="color:${p.stock<5?'red':'green'}">${p.stock}</td>
-                        <td><button onclick="delProd(${p.id})" class="btn btn-danger" style="padding:0.5rem; font-size:0.8rem;">X</button></td>
+                        <td>${p.name}</td><td>${p.barcode}</td><td>${p.price.toFixed(2)}</td>
+                        <td style="color:${p.stock<5?'red':'green'}">${p.stock}</td>
+                        <td><button onclick="delProd(${p.id})" class="btn-danger" style="padding:5px 10px; font-size:0.8rem;">X</button></td>
                     </tr>`;
             });
         }
+
         function delProd(id) {
-            if(confirm('¿Borrar?')) { inventory = inventory.filter(p=>p.id!==id); saveData(); renderInventory(); }
+            if(confirm('Borrar?')) { inventory = inventory.filter(p=>p.id!==id); saveGlobalData(); renderInventory(); }
         }
 
-        // --- LOGICA CAMARA / ESCANER ---
-        function startScanner() {
-            const modal = document.getElementById('scanner-modal');
-            modal.style.display = 'flex';
-            
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            // Preferimos la camara trasera ("environment")
-            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .catch(err => {
-                showToast("Error al abrir camara: " + err, 'error');
-                stopScanner();
-            });
-        }
-
-        function stopScanner() {
-            const modal = document.getElementById('scanner-modal');
-            modal.style.display = 'none';
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(err => console.error("Error al detener", err));
-            }
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            // Codigo detectado
-            stopScanner(); // Cerrar camara automaticamente
-            processSearch(decodedText);
-        }
-
-        // --- LOGICA VENTA ---
+        // --- CAJA (POS) ---
         const posInput = document.getElementById('pos-input');
+        const dropdown = document.getElementById('pos-dropdown');
+
+        posInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            dropdown.innerHTML = '';
+            if(val.length === 0) { dropdown.style.display='none'; return; }
+
+            const matches = inventory.filter(p => p.name.toLowerCase().includes(val) || p.barcode.includes(val));
+            if(matches.length > 0) {
+                matches.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'dropdown-item';
+                    li.innerHTML = `<span>${p.name}</span><span>$${p.price}</span>`;
+                    li.onclick = () => { addToCart(p); posInput.value=''; dropdown.style.display='none'; };
+                    dropdown.appendChild(li);
+                });
+                dropdown.style.display = 'block';
+            } else { dropdown.style.display='none'; }
+        });
+
         posInput.onkeydown = (e) => {
             if(e.key === 'Enter') {
-                e.preventDefault();
-                processSearch(posInput.value.trim());
-                posInput.value = '';
+                dropdown.style.display='none';
+                const val = posInput.value.trim();
+                let p = inventory.find(x => x.barcode === val);
+                if(!p) p = inventory.find(x => x.name.toLowerCase() === val.toLowerCase());
+                if(p) { addToCart(p); posInput.value=''; } 
+                else if(val) showToast('No encontrado', 'error');
             }
         };
 
-        function processSearch(query) {
-            let p = inventory.find(x => x.barcode === query);
-            if(!p) p = inventory.find(x => x.name.toLowerCase().includes(query.toLowerCase()));
-            
-            if(p) addToCart(p);
-            else showToast('Producto no encontrado', 'error');
-        }
-
         function addToCart(p) {
             const exist = cart.find(c => c.id === p.id);
-            const qty = exist ? exist.qty : 0;
-            if(p.stock <= qty) return showToast('Sin stock', 'error');
-
-            if(exist) exist.qty++;
-            else cart.push({...p, qty:1});
+            // Validamos stock global
+            if(exist) {
+                if(exist.qty < p.stock) exist.qty++; else showToast('Sin stock', 'error');
+            } else {
+                if(p.stock > 0) cart.push({...p, qty:1}); else showToast('Sin stock', 'error');
+            }
             renderCart();
-            showToast('Agregado');
         }
 
         function renderCart() {
             const tb = document.getElementById('cart-body');
             const empty = document.getElementById('empty-cart-msg');
-            const totalEl = document.getElementById('pos-total');
             tb.innerHTML = '';
             let total = 0;
             
-            if(cart.length===0) { empty.style.display='block'; totalEl.innerText='$0.00'; return; }
+            if(cart.length===0) { empty.style.display='block'; document.getElementById('pos-total').innerText='$0.00'; return; }
             empty.style.display='none';
 
             cart.forEach((item, idx) => {
@@ -462,40 +508,90 @@
                     <tr>
                         <td>${item.name}</td>
                         <td>${item.qty}</td>
-                        <td>$${(item.price*item.qty).toFixed(2)}</td>
-                        <td><button onclick="cart.splice(${idx},1);renderCart()" style="color:red;border:none;background:none;font-size:1.5rem;">&times;</button></td>
+                        <td>${(item.price*item.qty).toFixed(2)}</td>
+                        <td><span onclick="cart.splice(${idx},1);renderCart()" style="color:red;font-size:1.2rem;">&times;</span></td>
                     </tr>`;
             });
-            totalEl.innerText = '$' + total.toFixed(2);
+            document.getElementById('pos-total').innerText = '$' + total.toFixed(2);
         }
 
-        function clearCart() { cart=[]; renderCart(); }
-        
         function processSale() {
             if(cart.length===0) return showToast('Carrito vacio', 'error');
             let total=0;
             cart.forEach(c => {
                 total += c.price * c.qty;
                 const prod = inventory.find(p=>p.id===c.id);
-                if(prod) prod.stock -= c.qty;
+                if(prod) prod.stock -= c.qty; // Restamos del inventario GLOBAL
             });
-            salesHistory.push({ id:Date.now(), date:new Date().toISOString(), total:total });
-            saveData();
+            
+            // Guardamos venta con el usuario actual para referencia interna
+            salesHistory.push({ 
+                id:Date.now(), 
+                date:new Date().toISOString(), 
+                total:total, 
+                user: currentUser 
+            });
+            
+            saveGlobalData(); // Guarda cambios de inventario y ventas globalmente
             showToast('Venta realizada');
             clearCart();
         }
 
+        function clearCart() { cart=[]; renderCart(); }
+
+        // --- ESCANER ---
+        function startScanner(ctx) {
+            scanContext = ctx;
+            document.getElementById('scanner-modal').style.display = 'flex';
+            if(html5QrCode) html5QrCode.clear().then(initScanner).catch(()=>initScanner);
+            else initScanner();
+        }
+
+        function initScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess)
+            .catch(err => { showToast("Error camara", 'error'); stopScanner(); });
+        }
+
+        function stopScanner() {
+            document.getElementById('scanner-modal').style.display = 'none';
+            if(html5QrCode) html5QrCode.stop().then(()=>html5QrCode.clear()).catch(()=>{});
+        }
+
+        function onScanSuccess(code) {
+            stopScanner();
+            if(scanContext === 'inventory') {
+                document.getElementById('prod-barcode').value = code;
+                showToast('Codigo capturado');
+            } else {
+                let p = inventory.find(x => x.barcode === code);
+                if(p) { addToCart(p); showToast('Agregado'); } else showToast('No encontrado', 'error');
+            }
+        }
+
         // --- REPORTES ---
         function renderReports() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const todaySales = salesHistory.filter(s => s.date.startsWith(todayStr));
+            const today = new Date().toISOString().split('T')[0];
+            // Filtramos las ventas globales de hoy (sin importar quien hizo la venta)
+            const todaySales = salesHistory.filter(s => s.date.startsWith(today));
+            
             document.getElementById('report-date').innerText = new Date().toLocaleDateString('es-ES');
             document.getElementById('report-count').innerText = todaySales.length;
-            const total = todaySales.reduce((sum, s) => sum + s.total, 0);
+            
+            // Sumamos todo lo vendido hoy por cualquier usuario
+            const total = todaySales.reduce((sum, s)=>sum+s.total, 0);
             document.getElementById('report-total').innerText = '$' + total.toFixed(2);
         }
 
-        renderInventory();
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#pos-input') && !e.target.closest('#pos-dropdown')) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Inicializar
+        checkLogin();
+
     </script>
 </body>
 </html>
