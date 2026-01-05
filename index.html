@@ -117,7 +117,7 @@
         .btn-camera { background-color: #3b82f6; color: white; margin-bottom: 0.5rem; }
         .btn-pdf { background-color: #dc2626; color: white; }
         
-        /* Nuevo estilo para borrar */
+        /* Estilo para borrar */
         .btn-delete-area {
             border-top: 2px dashed var(--danger);
             padding-top: 1rem;
@@ -134,13 +134,30 @@
         th { background-color: #d1fae5; color: var(--primary); padding: 10px; text-align: left; }
         td { padding: 10px; border-bottom: 1px solid #eee; }
         
-        #scanner-modal {
+        /* --- MODALES --- */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 2000; display: none;
+            background: rgba(0,0,0,0.85); z-index: 2000; display: none;
             flex-direction: column; align-items: center; justify-content: center;
         }
-        #reader { width: 90%; max-width: 400px; border-radius: 10px; overflow: hidden; }
         
+        #scanner-modal { z-index: 2001; } /* Encima del pago si se abre en inventario */
+        #reader { width: 90%; max-width: 400px; border-radius: 10px; overflow: hidden; }
+
+        /* Estilos especificos del Modal de Pago */
+        #payment-modal { z-index: 2000; }
+        .payment-card {
+            background: #fff; width: 90%; max-width: 350px; padding: 2rem;
+            border-radius: 20px; color: #000; text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .pay-amount-display {
+            font-size: 3rem; font-weight: 900; color: var(--primary); margin: 1rem 0;
+        }
+        .change-display {
+            font-size: 2rem; font-weight: bold; color: var(--danger); margin-bottom: 1.5rem;
+        }
+
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; width: 90%; max-width: 300px; }
         .toast {
             background: #fff; color: #000; padding: 12px; border-radius: 8px; margin-bottom: 10px;
@@ -242,7 +259,8 @@
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="processSale()" class="btn btn-success" style="flex: 2;">COBRAR</button>
+                    <!-- Al hacer clic abre el modal de pago -->
+                    <button onclick="initiatePayment()" class="btn btn-success" style="flex: 2;">COBRAR</button>
                     <button onclick="clearCart()" class="btn btn-danger" style="flex: 1;">X</button>
                 </div>
             </section>
@@ -250,7 +268,7 @@
             <!-- SECCION 2: INVENTARIO -->
             <section id="view-inventory" class="view-section">
                 <div class="card">
-                    <h2>Agregar Producto</h2>
+                    <h2>Agregar / Actualizar Producto</h2>
                     <form id="inventory-form">
                         <label>Nombre</label>
                         <input type="text" id="prod-name" placeholder="Ej. Galletas" required>
@@ -269,11 +287,11 @@
                                 <input type="number" id="prod-price" step="0.01" placeholder="0.00" required>
                             </div>
                             <div>
-                                <label>Stock</label>
+                                <label>Stock a Agregar</label>
                                 <input type="number" id="prod-stock" placeholder="0" required>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <button type="submit" class="btn btn-primary">Guardar / Actualizar</button>
                     </form>
                 </div>
 
@@ -359,10 +377,30 @@
     </div>
 
     <!-- MODAL CAMARA -->
-    <div id="scanner-modal">
+    <div id="scanner-modal" class="modal-overlay">
         <div id="reader"></div>
         <div style="margin-top: 1rem; width: 80%; max-width: 400px;">
             <button onclick="stopScanner()" class="btn btn-danger">Cerrar Camara</button>
+        </div>
+    </div>
+
+    <!-- MODAL DE PAGO (NUEVO) -->
+    <div id="payment-modal" class="modal-overlay">
+        <div class="payment-card">
+            <h3 style="margin-bottom: 1rem;">COBRAR</h3>
+            <p>Total a Pagar:</p>
+            <div class="pay-amount-display" id="pay-total-display">$0.00</div>
+            
+            <label>Monto Recibido:</label>
+            <input type="number" id="pay-amount-input" placeholder="0.00" step="0.01" style="font-size: 2rem; text-align: center;">
+            
+            <p>Cambio:</p>
+            <div class="change-display" id="pay-change-display">$0.00</div>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="confirmPayment()" class="btn btn-success">CONFIRMAR</button>
+                <button onclick="closePaymentModal()" class="btn btn-danger">CANCELAR</button>
+            </div>
         </div>
     </div>
 
@@ -377,8 +415,12 @@
         let inventory = [];
         let salesHistory = [];
         let cart = [];
-        let html5QrCode = null; // Inicializar en null explicitamente
+        let html5QrCode = null;
         let scanContext = '';
+        
+        // Variables para el pago
+        let currentSaleTotal = 0;
+        let currentSaleItems = [];
 
         // --- INICIALIZACION ---
         window.onload = function() {
@@ -432,21 +474,34 @@
             if(v === 'reports') renderReports();
         }
 
-        // --- INVENTARIO ---
+        // --- INVENTARIO (ACTUALIZADO PARA SUMAR STOCK) ---
         document.getElementById('inventory-form').onsubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
             const barcode = document.getElementById('prod-barcode').value.trim();
             const price = parseFloat(document.getElementById('prod-price').value);
-            const stock = parseInt(document.getElementById('prod-stock').value);
+            const stockToAdd = parseInt(document.getElementById('prod-stock').value);
 
-            if(inventory.some(p=>p.barcode===barcode)) return showToast('Codigo duplicado', 'error');
+            // Buscar si el codigo existe
+            const existing = inventory.find(p => p.barcode === barcode);
 
-            inventory.push({ id:Date.now(), name, barcode, price, stock });
-            saveGlobalData();
-            renderInventory();
-            e.target.reset();
-            showToast('Guardado');
+            if (existing) {
+                // SI EXISTE: Actualizar stock y datos
+                existing.stock += stockToAdd; // Sumar al stock existente
+                existing.name = name; // Actualizar nombre
+                existing.price = price; // Actualizar precio
+                saveGlobalData();
+                renderInventory();
+                e.target.reset();
+                showToast('Stock Actualizado');
+            } else {
+                // SI NO EXISTE: Crear nuevo
+                inventory.push({ id:Date.now(), name, barcode, price, stock: stockToAdd });
+                saveGlobalData();
+                renderInventory();
+                e.target.reset();
+                showToast('Producto Guardado');
+            }
         };
 
         function renderInventory() {
@@ -535,19 +590,67 @@
             document.getElementById('pos-total').innerText = '$' + total.toFixed(2);
         }
 
-        function processSale() {
+        // --- LOGICA DE PAGO (NUEVO) ---
+        function initiatePayment() {
             if(cart.length===0) return showToast('Carrito vacio', 'error');
-            let total=0;
             
-            const itemsSnapshot = cart.map(c => ({
+            // Calcular total
+            let total = 0;
+            cart.forEach(c => total += c.price * c.qty);
+            currentSaleTotal = total;
+            
+            // Guardar items snapshot para despues guardar en historial
+            currentSaleItems = cart.map(c => ({
                 name: c.name,
                 qty: c.qty,
                 price: c.price,
                 subtotal: c.price * c.qty
             }));
 
+            // Mostrar Modal
+            document.getElementById('pay-total-display').innerText = '$' + currentSaleTotal.toFixed(2);
+            document.getElementById('pay-amount-input').value = '';
+            document.getElementById('pay-change-display').innerText = '$0.00';
+            document.getElementById('payment-modal').style.display = 'flex';
+            
+            // Enfocar input
+            setTimeout(() => document.getElementById('pay-amount-input').focus(), 100);
+        }
+
+        // Escuchar cambios en el input del pago
+        document.getElementById('pay-amount-input').addEventListener('input', function(e) {
+            const amount = parseFloat(e.target.value);
+            const change = amount - currentSaleTotal;
+            
+            const display = document.getElementById('pay-change-display');
+            if (!isNaN(amount)) {
+                if (change >= 0) {
+                    display.innerText = '$' + change.toFixed(2);
+                    display.style.color = '#064e3b'; // Verde
+                } else {
+                    display.innerText = 'Faltan $' + Math.abs(change).toFixed(2);
+                    display.style.color = '#ef4444'; // Rojo
+                }
+            } else {
+                display.innerText = '$0.00';
+            }
+        });
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+
+        function confirmPayment() {
+            const amountInput = document.getElementById('pay-amount-input');
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount < currentSaleTotal) {
+                showToast('Monto insuficiente', 'error');
+                return;
+            }
+
+            // Procesar venta real (Restar stock y guardar)
             cart.forEach(c => {
-                total += c.price * c.qty;
                 const prod = inventory.find(p=>p.id===c.id);
                 if(prod) prod.stock -= c.qty;
             });
@@ -555,36 +658,32 @@
             salesHistory.push({ 
                 id:Date.now(), 
                 date:new Date().toISOString(), 
-                total:total,
-                items: itemsSnapshot 
+                total:currentSaleTotal,
+                items: currentSaleItems 
             });
             
             saveGlobalData();
+            closePaymentModal();
             showToast('Venta realizada');
             clearCart();
         }
 
         function clearCart() { cart=[]; renderCart(); }
 
-        // --- ESCANER (CORREGIDO) ---
+        // --- ESCANER ---
         function startScanner(ctx) {
             scanContext = ctx;
             const modal = document.getElementById('scanner-modal');
             modal.style.display = 'flex';
 
-            // SOLUCION: Asegurar limpieza completa antes de iniciar nueva instancia
             if (html5QrCode) {
-                // 1. Detener
                 html5QrCode.stop().then(() => {
-                    // 2. Limpiar completamente
                     return html5QrCode.clear();
                 }).then(() => {
-                    // 3. Resetear variable global para crear una NUEVA instancia
                     html5QrCode = null;
                     initScanner();
                 }).catch(err => {
                     console.error("Error limpiando escaner:", err);
-                    // Forzar reset aun si hay error
                     html5QrCode = null;
                     initScanner();
                 });
@@ -594,14 +693,13 @@
         }
 
         function initScanner() {
-            // Crear NUEVA instancia
             html5QrCode = new Html5Qrcode("reader");
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
             
             html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
             .catch(err => {
                 showToast("Error al abrir camara", 'error');
-                stopScanner(); // Intentar limpiar si falla
+                stopScanner();
             });
         }
 
@@ -609,7 +707,6 @@
             const modal = document.getElementById('scanner-modal');
             modal.style.display = 'none';
             if (html5QrCode) {
-                // Detener y limpiar al cerrar manualmente
                 html5QrCode.stop().then(() => {
                     return html5QrCode.clear();
                 }).then(() => {
@@ -629,7 +726,7 @@
             }
         }
 
-        // --- REPORTES CON FILTROS Y LISTA DETALLADA ---
+        // --- REPORTES ---
         function getFilteredSales() {
             const type = document.getElementById('report-type').value;
             const now = new Date();
@@ -660,12 +757,10 @@
             if(type === 'month') label = new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' });
             if(type === 'year') label = new Date().getFullYear();
 
-            // Actualizar resumen general
             document.getElementById('report-date').innerText = label.toUpperCase();
             document.getElementById('report-count').innerText = filtered.length;
             document.getElementById('report-total').innerText = '$' + filtered.reduce((sum, s)=>sum+s.total, 0).toFixed(2);
 
-            // Actualizar lista de ventas
             const listContainer = document.getElementById('sales-list');
             listContainer.innerHTML = '';
 
@@ -717,17 +812,14 @@
             const leftMargin = 10;
             const lineHeight = 8;
 
-            // Titulo
             doc.setFontSize(18);
             doc.text(removeAccents("Abarrotes V&V - " + label), leftMargin, yPos);
             yPos += 15;
 
-            // Fecha
             doc.setFontSize(12);
             doc.text("Fecha: " + new Date().toLocaleDateString('es-ES'), leftMargin, yPos);
             yPos += 10;
 
-            // Resumen
             doc.setFontSize(14);
             doc.text(removeAccents("Ventas: ") + filteredSales.length, leftMargin, yPos);
             yPos += 8;
@@ -738,7 +830,6 @@
             doc.line(leftMargin, yPos, 200, yPos);
             yPos += 10;
 
-            // Detalle de Ventas
             doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
             doc.text("Detalle de Transacciones:", leftMargin, yPos);
