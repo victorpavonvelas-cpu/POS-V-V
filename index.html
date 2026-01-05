@@ -188,7 +188,8 @@
             padding-right: 5px;
         }
 
-        .sale-card {
+        /* Tarjeta de un dia completo */
+        .day-card {
             background: #fff;
             color: #000;
             border-radius: 10px;
@@ -197,7 +198,7 @@
             border-left: 5px solid var(--accent);
         }
 
-        .sale-header {
+        .day-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -208,12 +209,9 @@
             font-size: 0.9rem;
         }
 
-        .sale-item {
-            font-size: 0.85rem;
-            color: #555;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3px;
+        .day-total {
+            font-size: 1.2rem;
+            color: var(--primary);
         }
 
     </style>
@@ -259,7 +257,6 @@
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <!-- Al hacer clic abre el modal de pago -->
                     <button onclick="initiatePayment()" class="btn btn-success" style="flex: 2;">COBRAR</button>
                     <button onclick="clearCart()" class="btn btn-danger" style="flex: 1;">X</button>
                 </div>
@@ -287,7 +284,7 @@
                                 <input type="number" id="prod-price" step="0.01" placeholder="0.00" required>
                             </div>
                             <div>
-                                <label>Stock a Agregar</label>
+                                <label>Stock Total</label> <!-- ETIQUETA CAMBIADA -->
                                 <input type="number" id="prod-stock" placeholder="0" required>
                             </div>
                         </div>
@@ -311,7 +308,7 @@
             <!-- SECCION 3: REPORTES -->
             <section id="view-reports" class="view-section">
                 <div class="card" style="text-align:center;">
-                    <h2>Corte de Ventas</h2>
+                    <h2>Historial de Cortes</h2>
                     
                     <!-- Selector de fecha -->
                     <label>Tipo de Reporte:</label>
@@ -348,11 +345,11 @@
                     </div>
                 </div>
 
-                <!-- TARJETA: LISTA DE VENTAS -->
+                <!-- TARJETA: LISTA DE CORTES DIARIOS -->
                 <div class="card">
-                    <h2>Detalle de Productos Vendidos</h2>
+                    <h2>Corte por Dia (Calendario)</h2>
                     <div id="sales-list" class="sales-list-container">
-                        <div style="text-align:center; padding:20px; color:#888;">Selecciona un periodo para ver el detalle</div>
+                        <div style="text-align:center; padding:20px; color:#888;">Selecciona un periodo para ver los cortes</div>
                     </div>
                 </div>
             </section>
@@ -384,7 +381,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE PAGO (NUEVO) -->
+    <!-- MODAL DE PAGO -->
     <div id="payment-modal" class="modal-overlay">
         <div class="payment-card">
             <h3 style="margin-bottom: 1rem;">COBRAR</h3>
@@ -474,29 +471,29 @@
             if(v === 'reports') renderReports();
         }
 
-        // --- INVENTARIO (ACTUALIZADO PARA SUMAR STOCK) ---
+        // --- INVENTARIO (MEJORADO) ---
         document.getElementById('inventory-form').onsubmit = (e) => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
             const barcode = document.getElementById('prod-barcode').value.trim();
             const price = parseFloat(document.getElementById('prod-price').value);
-            const stockToAdd = parseInt(document.getElementById('prod-stock').value);
+            const totalStock = parseInt(document.getElementById('prod-stock').value);
 
             // Buscar si el codigo existe
             const existing = inventory.find(p => p.barcode === barcode);
 
             if (existing) {
-                // SI EXISTE: Actualizar stock y datos
-                existing.stock += stockToAdd; // Sumar al stock existente
-                existing.name = name; // Actualizar nombre
-                existing.price = price; // Actualizar precio
+                // SI EXISTE: Actualizar datos exactamente a lo que esta en el input
+                existing.name = name;
+                existing.price = price;
+                existing.stock = totalStock; // Se actualiza al total escrito
                 saveGlobalData();
                 renderInventory();
                 e.target.reset();
-                showToast('Stock Actualizado');
+                showToast('Producto Actualizado');
             } else {
                 // SI NO EXISTE: Crear nuevo
-                inventory.push({ id:Date.now(), name, barcode, price, stock: stockToAdd });
+                inventory.push({ id:Date.now(), name, barcode, price, stock: totalStock });
                 saveGlobalData();
                 renderInventory();
                 e.target.reset();
@@ -590,16 +587,14 @@
             document.getElementById('pos-total').innerText = '$' + total.toFixed(2);
         }
 
-        // --- LOGICA DE PAGO (NUEVO) ---
+        // --- LOGICA DE PAGO ---
         function initiatePayment() {
             if(cart.length===0) return showToast('Carrito vacio', 'error');
             
-            // Calcular total
             let total = 0;
             cart.forEach(c => total += c.price * c.qty);
             currentSaleTotal = total;
             
-            // Guardar items snapshot para despues guardar en historial
             currentSaleItems = cart.map(c => ({
                 name: c.name,
                 qty: c.qty,
@@ -607,17 +602,14 @@
                 subtotal: c.price * c.qty
             }));
 
-            // Mostrar Modal
             document.getElementById('pay-total-display').innerText = '$' + currentSaleTotal.toFixed(2);
             document.getElementById('pay-amount-input').value = '';
             document.getElementById('pay-change-display').innerText = '$0.00';
             document.getElementById('payment-modal').style.display = 'flex';
             
-            // Enfocar input
             setTimeout(() => document.getElementById('pay-amount-input').focus(), 100);
         }
 
-        // Escuchar cambios en el input del pago
         document.getElementById('pay-amount-input').addEventListener('input', function(e) {
             const amount = parseFloat(e.target.value);
             const change = amount - currentSaleTotal;
@@ -649,7 +641,6 @@
                 return;
             }
 
-            // Procesar venta real (Restar stock y guardar)
             cart.forEach(c => {
                 const prod = inventory.find(p=>p.id===c.id);
                 if(prod) prod.stock -= c.qty;
@@ -715,18 +706,31 @@
             }
         }
 
+        // --- NUEVA LOGICA AL ESCANEAR INVENTARIO ---
         function onScanSuccess(code) {
             stopScanner();
             if(scanContext === 'inventory') {
                 document.getElementById('prod-barcode').value = code;
-                showToast('Codigo capturado');
+                
+                // Buscar producto en inventario
+                const prod = inventory.find(p => p.barcode === code);
+                if(prod) {
+                    // SI EXISTE: Llenar todos los campos
+                    document.getElementById('prod-name').value = prod.name;
+                    document.getElementById('prod-price').value = prod.price;
+                    document.getElementById('prod-stock').value = prod.stock;
+                    showToast('Producto cargado. Edite lo necesario.');
+                } else {
+                    // SI NO EXISTE: Solo codigo
+                    showToast('Nuevo producto. Llene los datos.');
+                }
             } else {
                 let p = inventory.find(x => x.barcode === code);
                 if(p) { addToCart(p); showToast('Agregado'); } else showToast('No encontrado', 'error');
             }
         }
 
-        // --- REPORTES ---
+        // --- REPORTES AGRUPADOS POR DIA (CALENDARIO) ---
         function getFilteredSales() {
             const type = document.getElementById('report-type').value;
             const now = new Date();
@@ -761,6 +765,7 @@
             document.getElementById('report-count').innerText = filtered.length;
             document.getElementById('report-total').innerText = '$' + filtered.reduce((sum, s)=>sum+s.total, 0).toFixed(2);
 
+            // --- NUEVA LOGICA: AGRUPAR POR DIA ---
             const listContainer = document.getElementById('sales-list');
             listContainer.innerHTML = '';
 
@@ -769,27 +774,39 @@
                 return;
             }
 
+            // Agrupar ventas por fecha
+            const groupedByDate = {};
             filtered.forEach(sale => {
-                const dateObj = new Date(sale.date);
-                const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-                let itemsHtml = '';
-                if(sale.items && sale.items.length > 0) {
-                    sale.items.forEach(item => {
-                        itemsHtml += `<div class="sale-item"><span>${item.name} x${item.qty}</span><span>$${item.subtotal.toFixed(2)}</span></div>`;
-                    });
+                const dateKey = sale.date.split('T')[0]; // YYYY-MM-DD
+                if (!groupedByDate[dateKey]) {
+                    groupedByDate[dateKey] = { total: 0, count: 0, sales: [] };
                 }
+                groupedByDate[dateKey].total += sale.total;
+                groupedByDate[dateKey].count += 1;
+                groupedByDate[dateKey].sales.push(sale);
+            });
 
-                const saleHtml = `
-                    <div class="sale-card">
-                        <div class="sale-header">
-                            <span>${timeStr}</span>
-                            <span>$${sale.total.toFixed(2)}</span>
+            // Obtener lista de fechas y ordenar (mas reciente primero)
+            const dates = Object.keys(groupedByDate).sort().reverse();
+
+            // Renderizar Tarjetas de Dias
+            dates.forEach(dateStr => {
+                const dayData = groupedByDate[dateStr];
+                
+                // Formatear fecha para mostrar (ej: 15/10/2023)
+                const [y, m, d] = dateStr.split('-');
+                const displayDate = `${d}/${m}/${y}`;
+
+                const dayHtml = `
+                    <div class="day-card">
+                        <div class="day-header">
+                            <span>${displayDate}</span>
+                            <span style="font-size:0.8rem; color:#666;">${dayData.count} ventas</span>
                         </div>
-                        <div>${itemsHtml}</div>
+                        <div class="day-total">$${dayData.total.toFixed(2)}</div>
                     </div>
                 `;
-                listContainer.innerHTML += saleHtml;
+                listContainer.innerHTML += dayHtml;
             });
         }
 
@@ -812,14 +829,17 @@
             const leftMargin = 10;
             const lineHeight = 8;
 
+            // Titulo
             doc.setFontSize(18);
             doc.text(removeAccents("Abarrotes V&V - " + label), leftMargin, yPos);
             yPos += 15;
 
+            // Fecha
             doc.setFontSize(12);
             doc.text("Fecha: " + new Date().toLocaleDateString('es-ES'), leftMargin, yPos);
             yPos += 10;
 
+            // Resumen
             doc.setFontSize(14);
             doc.text(removeAccents("Ventas: ") + filteredSales.length, leftMargin, yPos);
             yPos += 8;
@@ -830,41 +850,57 @@
             doc.line(leftMargin, yPos, 200, yPos);
             yPos += 10;
 
+            // AGRUPAR POR DIA PARA EL PDF
+            const groupedByDate = {};
+            filteredSales.forEach(sale => {
+                const dateKey = sale.date.split('T')[0];
+                if (!groupedByDate[dateKey]) groupedByDate[dateKey] = { sales: [] };
+                groupedByDate[dateKey].sales.push(sale);
+            });
+
+            const dates = Object.keys(groupedByDate).sort();
+
             doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
-            doc.text("Detalle de Transacciones:", leftMargin, yPos);
+            doc.text("Detalle por Dia:", leftMargin, yPos);
             yPos += 10;
             doc.setFont("helvetica", "normal");
 
-            if(filteredSales.length === 0) {
-                doc.text("No hay ventas en este periodo.", leftMargin, yPos);
-            } else {
-                filteredSales.forEach((sale) => {
-                    if(yPos > 260) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
+            dates.forEach(dateKey => {
+                const daySales = groupedByDate[dateKey].sales;
+                // Formatear fecha
+                const [y, m, d] = dateKey.split('-');
+                const displayDate = `${d}/${m}/${y}`;
+                const dayTotal = daySales.reduce((sum, s) => sum + s.total, 0);
 
-                    const dateObj = new Date(sale.date);
-                    const dateStr = dateObj.toLocaleDateString('es-ES');
-                    const timeStr = dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+                if(yPos > 250) { doc.addPage(); yPos = 20; }
 
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Fecha: ${dateStr} - Hora: ${timeStr} - Total: $${sale.total.toFixed(2)}`, leftMargin, yPos);
+                // Encabezado del dia
+                doc.setFont("helvetica", "bold");
+                doc.text(removeAccents(`Fecha: ${displayDate} - Total del dia: $${dayTotal.toFixed(2)}`), leftMargin, yPos);
+                yPos += lineHeight;
+                doc.setFont("helvetica", "normal");
+
+                // Items del dia
+                daySales.forEach(sale => {
+                    if(yPos > 270) { doc.addPage(); yPos = 20; }
+                    const timeStr = new Date(sale.date).toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+                    doc.text(`  ${timeStr} ... $${sale.total.toFixed(2)}`, leftMargin, yPos);
                     yPos += lineHeight;
-                    doc.setFont("helvetica", "normal");
-
-                    if(sale.items && sale.items.length > 0) {
+                    
+                    // Opcional: Detalle de productos dentro del dia
+                    /*
+                    if(sale.items) {
                         sale.items.forEach(item => {
-                            if(yPos > 270) { doc.addPage(); yPos = 20; }
-                            const itemText = `- ${removeAccents(item.name)} x${item.qty} ... $${item.subtotal.toFixed(2)}`;
-                            doc.text(itemText, leftMargin + 5, yPos);
+                            if(yPos > 275) { doc.addPage(); yPos = 20; }
+                            doc.text(`    - ${removeAccents(item.name)} x${item.qty}`, leftMargin, yPos);
                             yPos += lineHeight;
                         });
                     }
-                    yPos += 5; 
+                    */
                 });
-            }
+                yPos += 5; 
+            });
 
             doc.save("Reporte_" + label + ".pdf");
             showToast("PDF Generado");
